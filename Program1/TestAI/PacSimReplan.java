@@ -33,7 +33,7 @@ public class PacSimReplan implements PacAction {
    @Override
    public void init() {
       simTime = 0;
-      path = new ArrayList();
+      path = new ArrayList<Point>();
    }
    
    @Override
