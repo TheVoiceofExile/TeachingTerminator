@@ -22,7 +22,7 @@ public class PacSimRNNA implements PacAction
     /**
      * @brief Construct the RNNA Agent and initialize it.
      */
-    public PacSimRNNA (String fname)
+    public PacSimRNNA(String fname)
     {
         PacSim sim = new PacSim(fname);
         sim.init(this);
@@ -31,7 +31,7 @@ public class PacSimRNNA implements PacAction
     /**
      * @brief Main method to generate the maze based on provided name.
      */
-    public static void main (String[] args)
+    public static void main(String[] args)
     {
         new PacSimRNNA(args[0]);
     }
@@ -40,7 +40,7 @@ public class PacSimRNNA implements PacAction
      * @brief Resets the global variables to allow the simulation to run more
      *        than one time without restarting the program.
      */
-    public void init ()
+    public void init()
     {
         numMovesMade = 0;
         path = new ArrayList<Point>();
@@ -57,6 +57,7 @@ public class PacSimRNNA implements PacAction
         PacCell[][] grid = (PacCell[][]) state;
         PacmanCell pc = PacUtils.findPacman(grid);
 
+        // Safety check to make sure Pacman is still in the game
         if (pc == null)
             return null;
 
