@@ -23,7 +23,7 @@ public class PacSimRNNA implements PacAction
     private List<Point> path;
     private int simulationTime;
     private int numMovesMade;
-    private boolean printedFoodArray = false;
+    private boolean printedStuff = false;
 
     /**
      * @brief Construct the RNNA Agent and initialize it.
@@ -40,6 +40,8 @@ public class PacSimRNNA implements PacAction
      */
     public static void main(String[] args)
     {
+        System.out.println("\nTSP using Repetitive Nearest Neighbor Algorithm by Christopher Miller and David Jaffie:");
+        System.out.println("\nMaze : " + args[ 0 ] + "\n" );
         new PacSimRNNA(args[0]);
     }
 
@@ -76,10 +78,11 @@ public class PacSimRNNA implements PacAction
 
             int [][] costTable = findCostToFood(grid, pc, foodPellets);
 
-            if(!printedFoodArray)
+            if(!printedStuff)
             {
                 printFoodInMaze(foodPellets);
-                printedFoodArray = true;
+                printCostToFood(grid, costTable);
+                printedStuff = true;
             }
 
             int numFoodPellets = 0;
@@ -89,12 +92,14 @@ public class PacSimRNNA implements PacAction
             Point pcLocation = new Point();
             Point currentFoodTarget;
 
-            List<FoodPellet> foodPelletsInMaze = new ArrayList<>();
-            List<Point> previousPath = new ArrayList<>();
+            List<FoodPellet> foodPelletsInMaze = new ArrayList<FoodPellet>();
+            List<Point> previousPath = new ArrayList<Point>();
 
-            List<Point> closestFoodPellets = new ArrayList<>();
+            List<Point> closestFoodPellets = new ArrayList<Point>();
 
-            List<FoodPellet> foodPelletsInMazeCopy = new ArrayList<>();
+            List<FoodPellet> foodPelletsInMazeCopy = new ArrayList<FoodPellet>();
+
+            String pathTaken = "";
 
             long startTime = System.currentTimeMillis();
 
@@ -104,6 +109,8 @@ public class PacSimRNNA implements PacAction
                 currentCost = 0;
 
                 int capacity;
+
+                System.out.println("\n\nPopulation at step " + (i + 1) + ":");
 
                 if (foodPelletsInMaze.size() > foodPellets.size())
                 {
@@ -132,7 +139,7 @@ public class PacSimRNNA implements PacAction
 
                         pcLocation = foodPelletsInMaze.get(j).getPointAlongPath(i - 1);
 
-                        closestFoodPellets = findClosestPellets(grid, foodPellets, costTable, pcLocation);
+                        closestFoodPellets = findClosestPellets(foodPelletsInMaze.get(j), foodPellets, costTable, pcLocation);
                         currentFoodTarget = closestFoodPellets.get(0);
                     }
 
@@ -145,6 +152,9 @@ public class PacSimRNNA implements PacAction
                     foodPelletsInMaze.get(j).setCostToPellet(foodPelletsInMaze.get(j).getCostToPellet() + currentCost);
 
                     foodPelletsInMaze.get(j).addPointToPath(currentFoodTarget);
+
+                    pathTaken = "[(" + (int)currentFoodTarget.getX() + "," + (int)currentFoodTarget.getY() + ")," + currentCost + "]";
+                    foodPelletsInMaze.get(j).setPathToPellet(previousPathString + pathTaken);
                 }
 
                 foodPelletsInMazeCopy = foodPelletsInMaze;
@@ -162,6 +172,13 @@ public class PacSimRNNA implements PacAction
                             return -1;
                     }
                 });
+
+                for (int k = 0; k < foodPelletsInMazeCopy.size(); k++)
+                {
+                    System.out.println(numFoodPellets + " : currentCost = " + foodPelletsInMazeCopy.get(k).getCostToPellet() + " : " +
+                            foodPelletsInMazeCopy.get(k).getPathToPellet());
+                    numFoodPellets++;
+                }
             }
 
             List<Point> finalSolution = null;
@@ -185,19 +202,22 @@ public class PacSimRNNA implements PacAction
         PacFace face = PacUtils.direction(pc.getLoc(), nextTarget);
         numMovesMade++;
 
-        System.out.println(numMovesMade + " : From [ " + (int)pc.getLoc().getX() + ", " + (int)pc.getLoc().getY() + " ] go " + face);
+        System.out.println("\t" + numMovesMade + " : From [ " + (int)pc.getLoc().getX() + ", " + (int)pc.getLoc().getY() + " ] go " + face
+                + " heading to: [ " + (int)nextTarget.getX() + ", " + (int)nextTarget.getY() + " ]");
 
         return face;
     }
 
     public void printFoodInMaze(List<Point> foodLocs)
     {
-        int i;
-        System.out.println("Food Array:");
-        for(i=0; i<foodLocs.size(); i++)
+        System.out.println("\nFood Array:\n");
+
+        for(int i = 0; i < foodLocs.size(); i++)
         {
             System.out.println((i + 1) + " : (" + (int)foodLocs.get(i).getX() + "," + (int)foodLocs.get(i).getY() + ")");
         }
+
+        System.out.println("\n");
     }
 
     private int[][] findCostToFood(PacCell[][] grid, PacCell pacman, List<Point> foodLocs)
@@ -207,9 +227,10 @@ public class PacSimRNNA implements PacAction
 
         for(int i  = 1; i < tableSize; i++)
         {
-            int costTo = BFSPath.getPath(grid, pacman.getLoc(), foodLocs.get(i - 1).size());
+            int costTo = BFSPath.getPath(grid, pacman.getLoc(), foodLocs.get(i - 1)).size();
 
-            costTable[0][i] = costTable[i][0] = costTo;
+            costTable[0][i] = costTo;
+            costTable[i][0] = costTo;
         }
 
         for(int i = 1; i < tableSize; i++)
@@ -220,37 +241,50 @@ public class PacSimRNNA implements PacAction
             }
         }
 
-
-
-
-
         return costTable;
-
     }
 
     public void printCostToFood(PacCell[][] grid, int[][] costTable)
     {
-        int i, j;
         int n = PacUtils.numFood(grid);
-        System.out.println("Cost Table:");
+        System.out.println("Cost Table:\n");
 
-        for(i=0; i<n+1; i++)
+        for(int i = 0; i < n + 1; i++)
         {
-            for(j=0; j<n+1; j++)
+            for(int j = 0; j < n + 1; j++)
             {
                 System.out.print(costTable[i][j] + "	");
             }
-            System.out.println("");
+            System.out.println("\n");
         }
     }
 
-    private List<Point> findClosestPellets(PacCell[][] grid, List<Point> food, int[][] costTable, Point pacmanLocation)
+    private List<Point> findClosestPellets(FoodPellet currentPellet, List<Point> food, int[][] costTable, Point pacmanLocation)
     {
-        // Find path to nearest food pellet.
-        Point tgt = PacUtils.nearestFood(pacmanLocation, grid);
-        List<Point> path = BFSPath.getPath(grid, pacmanLocation, tgt);
+        int minDistanceToPellet = Integer.MAX_VALUE;
 
-        return path;
+        int pacmanIndex = food.indexOf(pacmanLocation) + 1;
+
+        List<Point> selectedPoints = new ArrayList<Point>();
+
+        for(int i = 0; i < food.size(); i++)
+        {
+            if(!(currentPellet.getFullPath().contains(food.get(i))))
+            {
+                if(costTable[i + 1][pacmanIndex] < minDistanceToPellet)
+                {
+                    selectedPoints.clear();
+                    selectedPoints.add(food.get(i));
+                    minDistanceToPellet = costTable[i + 1][pacmanIndex];
+                }
+                if(costTable[i + 1][pacmanIndex] == minDistanceToPellet)
+                {
+                    selectedPoints.add(food.get(i));
+                }
+            }
+        }
+
+        return selectedPoints;
     }
 
     public class FoodPellet
@@ -309,11 +343,10 @@ public class PacSimRNNA implements PacAction
         }
 
 
-        public void setFullPath(List<Point> newPathToSet)
+        public void setFullPath(List<Point> path)
         {
-            this.path = newPathToSet;
+            this.path = path;
         }
-
 
 
         public void printFullPath()
@@ -327,4 +360,3 @@ public class PacSimRNNA implements PacAction
     }
 
 }
-
