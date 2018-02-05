@@ -24,8 +24,6 @@ public class PacSimRNNA implements PacAction
     private int simulationTime;
     private int numMovesMade;
     private boolean printedStuff = false;
-    private Point nextTarget = null;
-    private boolean flag = false;
 
     /**
      * @brief Construct the RNNA Agent and initialize it.
@@ -127,7 +125,6 @@ public class PacSimRNNA implements PacAction
                 for(int j = 0; j < capacity; j++)
                 {
                     String previousPathString = "";
-
                     // At i == 0 we have not considered any pellets yet, this initializes it
                     if(i == 0)
                     {
@@ -136,16 +133,7 @@ public class PacSimRNNA implements PacAction
 
                         pcLocation = pc.getLoc();
                         currentFoodTarget = foodPellets.get(j);
-
-                        currentCost = BFSPath.getPath(grid, pcLocation, currentFoodTarget).size();
-
-                        foodPelletsInMaze.get(j).setCostToPellet(foodPelletsInMaze.get(j).getCostToPellet() + currentCost);
-
-                        foodPelletsInMaze.get(j).addPointToPath(currentFoodTarget);
-
-                        pathTaken = "[(" + (int)currentFoodTarget.getX() + "," + (int)currentFoodTarget.getY() + ")," + currentCost + "]";
-
-                        foodPelletsInMaze.get(j).setPathToPellet(previousPathString + pathTaken);
+                        //System.out.println(foodPelletsInMaze);
                     }
                     else // Otherwise take the pellet we are currently considering and find the closest pellets to it
                     {
@@ -155,70 +143,30 @@ public class PacSimRNNA implements PacAction
 
                         closestFoodPellets = findClosestPellets(foodPelletsInMaze.get(j), foodPellets, costTable, pcLocation);
 
-                        if(closestFoodPellets.size() == 0)
-                        {
-                            break;
-                        }
+                        currentFoodTarget = closestFoodPellets.get(0);
+
+                        
+                        //System.out.println(closestFoodPellets);
                     }
 
-                    if(closestFoodPellets.size() >= 1)
-                    {
-                        List<Point> templatePath = null;
-                        for(int k = 0; k < closestFoodPellets.size(); k++)
-                        {
-                            if(k > 0)
-                            {
-                                FoodPellet foodPellet = new FoodPellet(templatePath);
-                                foodPelletsInMaze.add(foodPellet);
+                    // Store our current path off to expand on later
+                    previousPathString = foodPelletsInMaze.get(j).getPathToPellet();
 
-                                int index = foodPelletsInMaze.lastIndexOf(foodPellet);
+                    // Figure out what our current cost is
+                    currentCost = BFSPath.getPath(grid, pcLocation, currentFoodTarget).size();
 
-                                currentFoodTarget = closestFoodPellets.get(k);
+                    // Store the cost to the pellet
+                    foodPelletsInMaze.get(j).setCostToPellet(foodPelletsInMaze.get(j).getCostToPellet() + currentCost);
 
-                                currentCost = BFSPath.getPath(grid, pcLocation, currentFoodTarget).size();
+                    // Add the point to our path to get to that point
+                    // This may be related to partial paths
+                    foodPelletsInMaze.get(j).addPointToPath(currentFoodTarget);
 
-                                // Store our current path off to expand on later
-                                previousPathString = foodPelletsInMaze.get(j).getPathToPellet();
+                    // Print out the point we're considering and the cost to get there
+                    pathTaken = "[(" + (int)currentFoodTarget.getX() + "," + (int)currentFoodTarget.getY() + ")," + currentCost + "]";
 
-                                foodPelletsInMaze.get(index).setCostToPellet(foodPelletsInMaze.get(j).getCostToPellet() + currentCost);
-
-                                foodPelletsInMaze.get(index).addPointToPath(currentFoodTarget);
-
-                                String templatePathString = "";
-
-                                for (int m = 0; m < templatePath.size(); m++)
-                                {
-                                    templatePathString += "[(" + (int)templatePath.get(m).getX() + ","
-                                                               + (int)templatePath.get(m).getY() + "),"
-                                                               + foodPelletsInMaze.get(index).getCostToPellet() + "]";
-                                }
-
-                                pathTaken = "[(" + (int)currentFoodTarget.getX() + "," + (int)currentFoodTarget.getY() + ")," + currentCost + "]";
-
-                                foodPelletsInMaze.get(index).setPathToPellet(templatePathString + pathTaken);
-                            }
-                            else
-                            {
-                                currentFoodTarget = closestFoodPellets.get(0);
-
-                                currentCost = BFSPath.getPath(grid, pcLocation, currentFoodTarget).size();
-
-                                templatePath = new ArrayList<Point>(foodPelletsInMaze.get(j).getFullPath());
-
-                                // Store our current path off to expand on later
-                                previousPathString = foodPelletsInMaze.get(j).getPathToPellet();
-
-                                foodPelletsInMaze.get(j).setCostToPellet(foodPelletsInMaze.get(j).getCostToPellet() + currentCost);
-
-                                foodPelletsInMaze.get(j).addPointToPath(currentFoodTarget);
-
-                                pathTaken = "[(" + (int)currentFoodTarget.getX() + "," + (int)currentFoodTarget.getY() + "),"
-                                             + currentCost + "]";
-
-                                foodPelletsInMaze.get(j).setPathToPellet(previousPathString + pathTaken);
-                            }
-                        }
-                    }
+                    // Store path considered for this population level
+                    foodPelletsInMaze.get(j).setPathToPellet(previousPathString + pathTaken);
                 }
 
                 // Copy it out so we don't sort our actual path
@@ -251,28 +199,26 @@ public class PacSimRNNA implements PacAction
             // List for our best solution
             List<Point> finalSolution = null;
 
-            PacUtils.appendPointList(path, BFSPath.getPath(grid, pc.getLoc(), foodPelletsInMazeCopy.get(0).getFullPath().get(0)));
+            // 0 index is our best because it is sorted
+            path.add(foodPelletsInMazeCopy.get(0).getFullPath().get(0));
 
             // Get the total path for our final best solution
-            for(int i = 1; i < foodPelletsInMazeCopy.get(0).getFullPath().size() - 1; i++)
+            for(int i = 0; i < foodPelletsInMazeCopy.get(0).getFullPath().size() - 1; i++)
             {
-                //finalSolution = BFSPath.getPath(grid, foodPelletsInMazeCopy.get(0).getFullPath().get(i), foodPelletsInMazeCopy.get(0).getFullPath().get(i + 1));
+                finalSolution = BFSPath.getPath(grid, foodPelletsInMazeCopy.get(0).getFullPath().get(i), foodPelletsInMazeCopy.get(0).getFullPath().get(i + 1));
 
-                PacUtils.appendPointList(path, BFSPath.getPath(grid, foodPelletsInMazeCopy.get(0).getFullPath().get(i - 1), foodPelletsInMazeCopy.get(0).getFullPath().get(i)));
-
-                /*for(int j = 0; j < finalSolution.size(); j++)
+                for(int j = 0; j < finalSolution.size(); j++)
                 {
                     path.add(finalSolution.get(j));
-                }*/
+                }
             }
 
             // End timer
-            long endTime = System.currentTimeMillis();
-
-            System.out.println(endTime - startTime);
+            long end = System.currentTimeMillis();
         }
 
-        nextTarget = path.remove(0);
+        // As we reach a point remove it from the list so the next one can be navigated to
+        Point nextTarget = path.remove(0);
 
         // Face pacman in the direction for the next point
         PacFace face = PacUtils.direction(pc.getLoc(), nextTarget);
@@ -385,14 +331,7 @@ public class PacSimRNNA implements PacAction
         {
             costToPellet = 0;
             pathToPellet = "";
-            path = new ArrayList<Point>();
-        }
-
-        public FoodPellet(List<Point> copyPath)
-        {
-            costToPellet = 0;
-            pathToPellet = "";
-            path = new ArrayList<Point>(copyPath);
+            path = new ArrayList<>();
         }
 
 
